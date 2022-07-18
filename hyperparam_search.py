@@ -1,3 +1,6 @@
+from action_noise import *
+from param_noise import *
+
 def hyperparam_search():
     print("Starting hyperparam-optimization")
 
@@ -7,11 +10,12 @@ def hyperparam_search():
               'gamma': hp.uniform('gamma', 0.9, 0.999),
               'noise_std_dev': hp.uniform('noise_std_dev', 0.1, 0.4), }
 
-    best = fmin(loss_given_hyperparams, params,
+    best = fmin(train, params,
                 algo=hyperopt.rand.suggest, max_evals=100)
 
     print(best)
     print(hyperopt.space_eval(params, best))
 
 
-train(None)
+
+def train()
