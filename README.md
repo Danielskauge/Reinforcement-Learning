@@ -113,19 +113,19 @@ Sum of rewards at last episode was -126.
 
 In the mountain car environment the agent rarely recieves a large positive award, which is when it reaches the top of the hill. This could be charaterized as a sparse award environment. This led me to implement parameters noise, which in theory handled sparse awards far better than action noise. 
 
+Combining parameter noise and batch normalization initially produced a bug in the actor network, where output actions became NaN. I suspect this was because I was adding noise to the batch normalizattion layers, such that they were no longer normalizing their output properly. I fixed the bug by not applying noise to these layers, yet this combination still yielded horrible performance. Thus I discarded parameter noise, as batch normalization had by far the biggest positive impact on performance.
+
 The hyperparameter sets others have uses with DDPG for mountain car worked poorly out of the box for me. Training on this environment was also much slower than pendulum, such that automated hyperparameter tuning would take too long. This lead me to implement the td3 version of DDPG, which is supposed to be more stable and less sensitive to hyperparams.
 
 Training td3 on MountainCarContinuous turned out to be very slow, I suspect because it trains more networks than standard DDPG. Also little improvement in rewards. 
 
 In later experiments, the agent would eventually stabilize at a good score for at most a couple of hundred episodes, before failing completely. I suspect this is because once the agent had been stable for long enough, the replay buffer was filled up with only similar experiences, causing the agent to overfit and fail. 
 
-Combining parameter noise and batch normalization initially produced a bug in the actor network, where output actions became NaN. I suspect this was because I was adding noise to the batch normalizattion layers, such that they were no longer normalizing their output properly. I fixed the bug by not applying noise to these layers, yet this combination still yielded horrible performance. Thus I discarded parameter noise, as batch normalization had by far the biggest positive impact on performance.
-
-In theory, the stability from batch normalization should allow for higher learning rates. Though in my experiments training remained unstable. Results from reducing the learning rates yielded …
+In theory, the stability from batch normalization should allow for higher learning rates. Though in my experiments training remained unstable.
 
 ### Results
 The best performance came from a combination of using epsilon-decaying action noise, lower learning rates, batch normalization and higher batch sizes. Though this was not enough to stabilize training. The algorithm stabilized and came very close to solving the enviroment (average score over 90 over 100 episodes), but eventually destabilized. I am confident that tuning these parameters more can yield far better results, but training on this environment takes far too long for me to practically do this. 
-Hyperparameters were as specified in ddpg.py.
+Final score in this experiment is irrevant as the algorithm did not converge. Hyperparameters were as specified in ddpg.py. 
 
 ![Alt text](/images/ddpg_car_best_so_far.png?raw=true "DDPG MountainCarContinuous")
 
