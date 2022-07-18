@@ -3,8 +3,6 @@ import tensorflow as tf
 from tensorflow.keras import layers
 import numpy as np
 import matplotlib.pyplot as plt
-import hyperopt
-from hyperopt import fmin, tpe, hp
 from param_noise import *
 from action_noise import *
 from ddpg import *
@@ -15,15 +13,14 @@ from math import sqrt
 problem = "Pendulum-v1"
 batch_norm = False
 use_param_noise = False
-action_noise = True
+use_action_noise = True
 epsilon_decay = True
 gradient_clipping = False
 #to use hyperparameters from automated tuning
-use_estimated_params = False
 
 #TD3 features
 target_policy_smoothing = False
-delayed_policy_updates = True
+delayed_policy_updates = False
 #clipped_double_q_learning = False -> might be included later
 
 #interval for policy updates if delayed_policy_updates is enabled
@@ -41,15 +38,10 @@ if problem == 'Pendulum-v1':
     buffer_size = 50000
     batch_size = 64
     noise_stddev = 0.2
+    target_noise_stddev = 0.1
     hidden_layers_shape = (400,300)
     epsilon_decay = 0.95
     min_epsilon = 0.01 
-    if use_estimated_params:
-        tau = 0.007
-        gamma = 0.93
-        actor_lr = 0.009
-        critic_lr = 0.0197
-        noise_stddev = 0.198
 elif problem == 'MountainCarContinuous-v0':
     tau = 0.001
     gamma = 0.99
@@ -58,12 +50,10 @@ elif problem == 'MountainCarContinuous-v0':
     buffer_size = 50000
     batch_size = 256
     noise_stddev = 0.2
+    target_noise_stddev = 0.1
     hidden_layers_shape = (400,300)
     epsilon_decay = 0.99
     min_epsilon = 0.01
-    if stable_params:
-
-        hidden_layers_shape = (128, 128)
 elif problem == 'LunarLanderContinuous-v2':
     tau = 0.001
     gamma = 0.99
@@ -72,6 +62,7 @@ elif problem == 'LunarLanderContinuous-v2':
     buffer_size = 10000
     batch_size = 40
     noise_stddev = 0.2
+    target_noise_stddev = 0.1
     hidden_layers_shape = (400,300)
     epsilon_decay = 0.99
     min_epsilon = 0.01
@@ -310,13 +301,13 @@ if use_param_noise:
     param_noise = AdaptiveParamNoiseSpec(
         initial_stddev=0.1, desired_action_stddev=noise_stddev, adaptation_coefficient=1.05)
 
-if action_noise:
+if use_action_noise:
     #action noise object
     action_noise = OUActionNoise(mean=np.zeros(1), std_deviation=float(noise_stddev) * np.ones(1))
 
 if target_policy_smoothing:
     target_noise = OUActionNoise(mean=np.zeros(
-        1), std_deviation=float(noise_stddev/10) * np.ones(1))
+        1), std_deviation=float(target_noise_stddev) * np.ones(1))
 
 episode_step_counter = 0
 
@@ -397,7 +388,6 @@ for ep in range(episodes):
 plt.plot(avg_reward_list)
 plt.xlabel("Episode")
 plt.ylabel("Avg. Episodic Reward")
-plt.savefig('1_ddpg_loss_plot.png')
 plt.show()
 
 
