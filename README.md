@@ -104,7 +104,7 @@ The changes I made to DDPG were in effort to stabilize training and make it less
 I found that the hyperparameters given to me initilally differed from those in the official DDPG paper, meaning that neither of them were optimal. I therefore tried to find better parameters through use automated hyperparameter tuning. The resulting parameter set beat both other parameter sets.
 
 ### Results
-The best performance so far came as result of applying parameter noise. Most other changes had little effect, as the algorithm already performed well. Hyperparameters were as specified in ddpp.py.
+The best performance so far came as result of applying epsilon-decaying parameter noise. Most other changes had little effect, as the algorithm already performed well. Hyperparameters were as specified in ddpp.py. Batch normalization, TD3 features or gradient clipping was not used.
 Sum of rewards at last episode was -126.
 
 ![Alt text](/images/ddpg_pendulum_paramnoise.png?raw=true "DDPG MountainCarContinuous")
@@ -124,7 +124,7 @@ In later experiments, the agent would eventually stabilize at a good score for a
 In theory, the stability from batch normalization should allow for higher learning rates. Though in my experiments training remained unstable.
 
 ### Results
-The best performance came from a combination of using epsilon-decaying action noise, lower learning rates, batch normalization and higher batch sizes. Though this was not enough to stabilize training. The algorithm stabilized and came very close to solving the enviroment (average score over 90 over 100 episodes), but eventually destabilized. I am confident that tuning these parameters more can yield far better results, but training on this environment takes far too long for me to practically do this. 
+The best performance came from a combination of using epsilon-decaying action noise, lower learning rates, batch normalization and higher batch sizes. TD3 features or gradient clipping was not used. Though this was not enough to stabilize training. The algorithm stabilized and came very close to solving the enviroment (average score over 90 over 100 episodes), but eventually destabilized. I am confident that tuning these parameters more can yield far better results, but training on this environment takes far too long for me to practically do this. 
 Final score in this experiment is irrevant as the algorithm was unstable. Hyperparameters were as specified in ddpg.py. 
 
 ![Alt text](/images/ddpg_car_best_so_far.png?raw=true "DDPG MountainCarContinuous")
