@@ -125,7 +125,7 @@ In theory, the stability from batch normalization should allow for higher learni
 
 ### Results
 The best performance came from a combination of using epsilon-decaying action noise, lower learning rates, batch normalization and higher batch sizes. Though this was not enough to stabilize training. The algorithm stabilized and came very close to solving the enviroment (average score over 90 over 100 episodes), but eventually destabilized. I am confident that tuning these parameters more can yield far better results, but training on this environment takes far too long for me to practically do this. 
-Final score in this experiment is irrevant as the algorithm did not converge. Hyperparameters were as specified in ddpg.py. 
+Final score in this experiment is irrevant as the algorithm was unstable. Hyperparameters were as specified in ddpg.py. 
 
 ![Alt text](/images/ddpg_car_best_so_far.png?raw=true "DDPG MountainCarContinuous")
 
