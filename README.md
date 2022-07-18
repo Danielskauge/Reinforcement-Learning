@@ -6,6 +6,7 @@ My implementation of DDPG includes the following optional features:
 - Action noise, epsilon greedy and not
 - Parameter noise, epsilon greedy and not
 - Batch normalization
+- Gradient clipping
 - 2 features from TD3
     - Delayed Policy Updates
     - Target policy smoothing
@@ -19,6 +20,9 @@ Potential future features
     - I have implemented it elsewhere, but it is currently excluded for being slow and messy.
 - Prioritized Experience Replay
     - Could improve sample efficiency, particularly important for real life robotics.
+   
+***Note on Results***
+In all graphs, the average reward sums over the last 10 episodes is plotted unless otherwise specified. The final score is the reward sum of the last episode.
 
 ## DDPG
 
@@ -113,12 +117,13 @@ Training td3 on mountain car turned out to be too slow, I suspect because it tra
 In later experiments, the agent would eventually stabilize at a good score for at most a couple of hundred episodes, before failing completely. I found that the larger buffer size I used, the longer the agent would stay stable before failing. I suspect this is because once the agent had been stable for long enough, the buffer was filled up with only similar experiences, causing the agent to overfit and fail. 
 
 **Results**
+![Alt text](/images/ddpg_car_param_best_so_far?raw=true "DDPG MountainCarContinuous")
 
 Combining parameter noise and batch normalization initially produced a bug in the actor network, where output actions became NaN. I suspect this was because I was adding noise to the batch normalizattion layers, such that they were no longer normalizing their output properly. I fixed the bug by not applying noise to these layers, yet this combination still yielded horrible performance. Thus I discarded parameter noise, as batch normalization had by far the biggest positive impact on performance.
 
 In theory, the stability from batch normalization should allow for higher learning rates. Though in my experiments training remained unstable. Results from reducing the learning rates yielded …
 
-The highest score () came from a combination of ….
+The highest score () came from a combination of using epsilon-decaying parameter noise, lower learning rates, batch normalization and higher batch sizes. I am confident that tuning these parameters more can yield far better results, but training on this enviroment takes too long for me to practically do this.
 
 ### RESULTS
 
