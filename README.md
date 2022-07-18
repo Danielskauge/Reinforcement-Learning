@@ -18,9 +18,9 @@ These can be toggled in the ddpg.py file to easily experiment with different com
 ***Potential future features***
 
 - Clipped Double Q learning from TD3.
-    - I have implemented it elsewhere, but it is currently excluded for being slow and messy.
+    - I have implemented it elsewhere, and will add it here later.
 - Prioritized Experience Replay
-    - Could improve sample efficiency, particularly important for real life robotics.
+    - Could improve sampling efficiency.
 
 ***Requirements***
 - gym
@@ -104,7 +104,8 @@ The changes I made to DDPG were in effort to stabilize training and make it less
 I found that the hyperparameters given to me initilally differed from those in the official DDPG paper, meaning that neither of them were optimal. I therefore tried to find better parameters through use automated hyperparameter tuning. The resulting parameter set beat both other parameter sets.
 
 ### Results
-The highest score so far came as result of applying parameter noise. Most other changes had little effect, as the algorithm already performed well.
+The best performance so far came as result of applying parameter noise. Most other changes had little effect, as the algorithm already performed well. Hyperparameters were as specified in ddpp.py.
+Sum of rewards at last episode was -126.
 
 ![Alt text](/images/ddpg_pendulum_paramnoise.png?raw=true "DDPG MountainCarContinuous")
 
@@ -114,27 +115,21 @@ In the mountain car environment the agent rarely recieves a large positive award
 
 The hyperparameter sets others have uses with DDPG for mountain car worked poorly out of the box for me. Training on this environment was also much slower than pendulum, such that automated hyperparameter tuning would take too long. This lead me to implement the td3 version of DDPG, which is supposed to be more stable and less sensitive to hyperparams.
 
-Training td3 on mountain car turned out to be too slow, I suspect because it trains more networks than. Also little improvement in rewards. 
+Training td3 on MountainCarContinuous turned out to be very slow, I suspect because it trains more networks than standard DDPG. Also little improvement in rewards. 
 
-In later experiments, the agent would eventually stabilize at a good score for at most a couple of hundred episodes, before failing completely. I found that the larger buffer size I used, the longer the agent would stay stable before failing. I suspect this is because once the agent had been stable for long enough, the buffer was filled up with only similar experiences, causing the agent to overfit and fail. 
-
-Gradient clipping improve stability in training by
-
+In later experiments, the agent would eventually stabilize at a good score for at most a couple of hundred episodes, before failing completely. I suspect this is because once the agent had been stable for long enough, the replay buffer was filled up with only similar experiences, causing the agent to overfit and fail. 
 
 Combining parameter noise and batch normalization initially produced a bug in the actor network, where output actions became NaN. I suspect this was because I was adding noise to the batch normalizattion layers, such that they were no longer normalizing their output properly. I fixed the bug by not applying noise to these layers, yet this combination still yielded horrible performance. Thus I discarded parameter noise, as batch normalization had by far the biggest positive impact on performance.
 
 In theory, the stability from batch normalization should allow for higher learning rates. Though in my experiments training remained unstable. Results from reducing the learning rates yielded …
 
 ### Results
-The highest score () came from a combination of using epsilon-decaying parameter noise, lower learning rates, batch normalization and higher batch sizes. I am confident that tuning these parameters more can yield far better results, but training on this environment takes too long for me to practically do this.
+The best performance came from a combination of using epsilon-decaying action noise, lower learning rates, batch normalization and higher batch sizes. Though this was not enough to stabilize training. The algorithm stabilized and came very close to solving the enviroment (average score over 90 over 100 episodes), but eventually destabilized. I am confident that tuning these parameters more can yield far better results, but training on this environment takes far too long for me to practically do this. 
+Hyperparameters were as specified in ddpg.py.
 
 ![Alt text](/images/ddpg_car_best_so_far.png?raw=true "DDPG MountainCarContinuous")
 
 ## TASK 4: Lunar Lander Continuous
-
-### THOUGHS ON ENVIROMENT AND SOLUTION
 DDPG can be used to solve this enviroment as well, but I have not tested it yet.
 
-The lunar lander reward function can be considered somewhat sparse for the same reasons as with mountain car, which means parameter noise has potential. 
 
-It also has a more complex two dimensional action space, which calls for better exploration.
