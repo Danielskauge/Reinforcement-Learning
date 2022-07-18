@@ -1,7 +1,7 @@
 # Reinforcement-Learning
 Using deep RL algorithms to solve various OpenAI gym enviroments
 
-My implementation of DDPG includes the following optional features
+My implementation of DDPG includes the following optional features:
 
 - Action noise, epsilon greedy and not
 - Parameter noise, epsilon greedy and not
@@ -20,7 +20,7 @@ Potential future features
 - Prioritized Experience Replay
     - Could improve sample efficiency, particularly important for real life robotics.
 
-### DDPG
+## DDPG
 
 Deep Deterministic Policy Gradient (DDPG) is the algorithm I was given to begin with. It is a combination of deep Q-learning and policy gradient methods, in that it concurrently learns a Q-function and a policy. It uses off-policy data stored in a replay buffer and the Bellman equation to learn the Q-function, and uses the Q values to learn the policy. 
 
@@ -52,7 +52,7 @@ The policy learning side of DDPG cconsist of learning a policy that maximized th
 
 DDPG uses a replay buffer to store previous experiences, which it samples when updating the Q-function and policy networks. Buffer size is an important hyperparamater to tune. Too big slows down training, too small and the networks overfits to recent data.
 
-### ACTION AND PARAMETER SPACE NOISE
+### Epsilon Greedy Action and Parameter space noise
 
 In DDPG , exploration comes from applying gausssian noise either to the actions produced by the actor, or directly to the parameters of the policy network itself. The original paper uses action noise that with a standard deviation that decays over time, called epsilon-greedy action noise. This gives a gradual shift from exploration to exploitation.
 
@@ -66,19 +66,19 @@ This is solved by adapting the scale of parameter noise to a desired scale of eq
 
 ![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/9e707aba-cd98-402b-9c83-fb3e6f0e4a26/Untitled.png)
 
-### TD3
+### TD3 (Twin Delayed DDPG)
 
-I have also implemented the features of the TD3 (Twin Delayed DDPG) algorithm, as it has better training stability in theory. DDPG is brittle with respect to hyperparameters, and TD3 addresses this with three improvements.
+I have also implemented the features of the TD3 algorithm, as it has better training stability in theory. DDPG is brittle with respect to hyperparameters, and TD3 addresses this with three improvements.
 
 - Clipped Double Q Learning: TD3 learns two Q-functions in stead of one and uses the smaller Q-value to form targets for the loss fucntion. This helps with DDPG’s problem of overestiamtion Q-values.
 - Delayed Policy Updates: TD3 updates the policy and policy target networks less often than the Q-function.
 - Target Policy Smoothing: TD3 adds noise to the target actions, make it harder for the policy to exploit Q-function errors by smoothing out Q along changes in action.
 
-### BATCH NORMALZATION
+### Batch Normalization
 
 Batch normalization will in theory stabilize learning, thus allowing higher learning rates,  reducing the number of episodes required to train neural networks. A batch normalization layer normalizes its inputs, and is typically used before an activation function layer. One reason to use batch normalizaiton, is that when different features come in different ranges, they should be normalized such that one feature does not have an outsized impact. In the mountain car case, the action space is bounded [-1,1] but the state space is unbounded. Normalizing the state space beforehand would be difficult because we do not know the range of realistic values. Thus batch normalization comes in handy. 
 
-### AUTOMATED HYPERPARAMETER SEARCH
+### Automated hyperparameter tuning
 
  The optimal set of hyperparameters are specific to environment and implementation, such that a good set of hyperparameters for task 1 might not be sufficient to solve task 2. I realized that iteratively tuning parameters and testing the outcomes would be way to time consuming, and found a way to automize this process. We can automate finding good hyperparameters for each environment by reeatedly training the algorithm from scratch, each time with a new set of hyperparameters sampled from probability distributions. In the way I used it, the best set was selected as the one which resultated in the smallest loss after a given episode count.  I chose to use uniform distributions centered at the hyperparamer values used in similar experiments. This way the values would be bounded 0-1. I used the Hyperopt library to do this. 
 
