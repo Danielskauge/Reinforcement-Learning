@@ -11,13 +11,13 @@ My implementation of DDPG includes the following optional features:
     - Delayed Policy Updates
     - Target policy smoothing
 
-- (Almost done) Automated hyperparameter tuning 
-
 These can be toggled in the ddpg.py file to easily experiment with different combinations of features. Suitable hyperparameter sets for the environment are applied automatically when selecting from Pendulum-v0, MountainCarContinuous-v1, and LunarLanderContinuous-v1
 
 ***Potential future features***
 
 - Clipped Double Q learning from TD3.
+    - I have implemented it elsewhere, and will add it here later.
+- Automated hyperparameter tuning 
     - I have implemented it elsewhere, and will add it here later.
 - Prioritized Experience Replay
     - Could improve sampling efficiency.
