@@ -7,16 +7,15 @@ My implementation of DDPG includes the following optional features:
 - Parameter noise, epsilon greedy and not
 - Batch normalization
 - Gradient value clipping
-- 2 features from TD3
+- Features from TD3 algorithm
     - Delayed Policy Updates
     - Target policy smoothing
+    - Prioritized Experience Replay
 
 These can be toggled in the ddpg.py file to easily experiment with different combinations of features. Suitable hyperparameter sets for the environment are applied automatically when selecting from Pendulum-v0, MountainCarContinuous-v1, and LunarLanderContinuous-v1
 
 ***Potential future features***
 
-- Clipped Double Q learning from TD3.
-    - I have implemented it elsewhere, and will add it here later.
 - Automated hyperparameter tuning 
     - I have implemented it elsewhere, and will add it here later.
 - Prioritized Experience Replay

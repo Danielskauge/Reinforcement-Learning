@@ -5,13 +5,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from param_noise import *
 from action_noise import *
-from ddpg import *
 from math import sqrt
 
 
 #Pendulum-v1, MountainCarContinuous-v0, LunarLanderContinuous-v2
-problem = "Pendulum-v1"
-batch_norm = False
+problem = "MountainCarContinuous-v0"
+batch_norm = True
 use_param_noise = False
 use_action_noise = True
 epsilon_decay = True
@@ -19,14 +18,14 @@ gradient_clipping = False
 #to use hyperparameters from automated tuning
 
 #TD3 features
-target_policy_smoothing = False
+target_policy_smoothing = True
 delayed_policy_updates = False
-#clipped_double_q_learning = False -> might be included later
+clipped_double_q_learning = False
 
 #interval for policy updates if delayed_policy_updates is enabled
 td3_update_interval = 2
 
-episodes = 100
+episodes = 300
 epsilon = 1
 gradient_clip_value = 1
 
@@ -45,14 +44,14 @@ if problem == 'Pendulum-v1':
 elif problem == 'MountainCarContinuous-v0':
     tau = 0.001
     gamma = 0.99
-    actor_lr = 0.00002
-    critic_lr = 0.0002
-    buffer_size = 50000
-    batch_size = 256
+    actor_lr = 0.0001
+    critic_lr = 0.001
+    buffer_size = 10000
+    batch_size = 40
     noise_stddev = 0.2
     target_noise_stddev = 0.1
     hidden_layers_shape = (400,300)
-    epsilon_decay = 0.99
+    epsilon_decay = 0.98
     min_epsilon = 0.01
 elif problem == 'LunarLanderContinuous-v2':
     tau = 0.001
@@ -110,7 +109,7 @@ class Buffer:
     ):
         # Training and updating Actor & Critic networks.
         # See Pseudo Code.
-        with tf.GradientTape() as tape:
+        with tf.GradientTape(persistent=True) as tape:
             target_actions = target_actor(next_state_batch, training=True)
 
             #adds noise to targets if target_policy_smoothing is enabled
@@ -119,12 +118,26 @@ class Buffer:
                 noise = tf.cast(tf.convert_to_tensor(target_noise()), tf.float32)
                 target_actions = tf.clip_by_value(tf.math.add(noise, target_actions),lower_bound,upper_bound) 
 
-            y = reward_batch + gamma * target_critic(
-                [next_state_batch, target_actions], training=True
-            )
+            #chooses smallest of two q values if clipped_double_q_learning is enabled
+            if clipped_double_q_learning:
+                y = reward_batch + gamma * tf.minimum(
+                    target_critic(
+                        [next_state_batch, target_actions], training=True),
+                    target_critic_2(
+                        [next_state_batch, target_actions], training=True)
+                    )
+            else:
+                y = reward_batch + gamma * target_critic(
+                        [next_state_batch, target_actions], training=True)
+            
             critic_value = critic_model(
                 [state_batch, action_batch], training=True)
             critic_loss = tf.math.reduce_mean(tf.math.square(y - critic_value))
+
+            if clipped_double_q_learning:
+                critic_value_2 = critic_model_2(
+                    [state_batch, action_batch], training=True)
+                critic_loss_2 = tf.math.reduce_mean(tf.math.square(y - critic_value_2))
 
         critic_grad = tape.gradient(
             critic_loss, critic_model.trainable_variables)
@@ -132,7 +145,17 @@ class Buffer:
             zip(critic_grad, critic_model.trainable_variables)
         )
 
-        #if clipped_double_q_learning enabled, only 
+        if clipped_double_q_learning:
+            critic_grad_2 = tape.gradient(
+                critic_loss_2, critic_model_2.trainable_variables)
+            critic_optimizer.apply_gradients(
+                zip(critic_grad_2, critic_model_2.trainable_variables)
+            )
+
+        del tape
+
+
+        #if delayed_policy_updates is True, only updates with certain interval
         if (not delayed_policy_updates) or (delayed_policy_updates and (episode_step_counter % td3_update_interval == 0)):
             #print("training actor network")
             with tf.GradientTape() as tape:
@@ -235,8 +258,11 @@ def policy(state, use_param_noise):
     #gets action from actor network, and applies either param or action noise 
     if use_param_noise:
         action = tf.squeeze(perturbed_actor(state))
+    elif use_action_noise and epsilon_decay:
+        action = tf.squeeze(actor_model(state)) + epsilon * action_noise()
     else:
         action = tf.squeeze(actor_model(state)) + action_noise()
+
 
     # We make sure action is within bounds
     legal_action = np.clip(action.numpy(), lower_bound, upper_bound)
@@ -292,6 +318,7 @@ target_critic = get_critic(hidden_layers_shape)
 target_actor.set_weights(actor_model.get_weights())
 target_critic.set_weights(critic_model.get_weights())
 
+
 #actor to be perturbed with parameter noise
 if use_param_noise:
     perturbed_actor = get_actor(hidden_layers_shape)
@@ -309,9 +336,13 @@ if target_policy_smoothing:
     target_noise = OUActionNoise(mean=np.zeros(
         1), std_deviation=float(target_noise_stddev) * np.ones(1))
 
+if clipped_double_q_learning:
+    critic_model_2 = get_critic(hidden_layers_shape)
+    target_critic_2 = get_critic(hidden_layers_shape)
+    critic_model_2.set_weights(critic_model.get_weights())
+    target_critic_2.set_weights(critic_model.get_weights())
+
 episode_step_counter = 0
-
-
 
 #To store reward history of each episode
 ep_reward_list = []
@@ -388,6 +419,7 @@ for ep in range(episodes):
 plt.plot(avg_reward_list)
 plt.xlabel("Episode")
 plt.ylabel("Avg. Episodic Reward")
-plt.show()
+plt.grid()
+plt.savefig('results.png')
 
 
