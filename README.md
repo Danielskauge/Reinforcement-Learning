@@ -28,6 +28,11 @@ These can be toggled in the ddpg.py file to easily experiment with different com
 - matplotlib
 
 Code has only been tested on Windows.
+
+If running on a Colab Notebook, add the following at the start of the code to be able to run LunarLanderContinuous-v2:
+!pip3 install box2d-py
+!pip3 install gym[Box_2D]
+
    
 ***Note on Results***
 In all graphs, the average reward sums over the last 10 episodes is plotted unless otherwise specified. The final score is the reward sum of the last episode.

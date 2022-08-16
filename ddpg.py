@@ -9,31 +9,32 @@ from math import sqrt
 
 
 #Pendulum-v1, MountainCarContinuous-v0, LunarLanderContinuous-v2
-problem = "MountainCarContinuous-v0"
+problem = "LunarLanderContinuous-v2"
 batch_norm = True
-use_param_noise = False
-use_action_noise = True
-epsilon_decay = True
 gradient_clipping = False
+use_action_noise = True
+use_param_noise = not use_action_noise
+linear_epsilon_decay = True
+exponential_epsilon_decay = not linear_epsilon_decay
 #to use hyperparameters from automated tuning
 
 #TD3 features
-target_policy_smoothing = True
+target_policy_smoothing = False
 delayed_policy_updates = False
 clipped_double_q_learning = False
 
 #interval for policy updates if delayed_policy_updates is enabled
 td3_update_interval = 2
 
-episodes = 300
+episodes = 500
 epsilon = 1
 gradient_clip_value = 1
 
 if problem == 'Pendulum-v1':
     tau = 0.005
     gamma = 0.99
-    actor_lr = 0.002
-    critic_lr = 0.001
+    actor_lr = 0.001
+    critic_lr = 0.002
     buffer_size = 50000
     batch_size = 64
     noise_stddev = 0.2
@@ -52,17 +53,18 @@ elif problem == 'MountainCarContinuous-v0':
     target_noise_stddev = 0.1
     hidden_layers_shape = (400,300)
     epsilon_decay = 0.98
+    linear_epsilon_decay = 0.03
     min_epsilon = 0.01
 elif problem == 'LunarLanderContinuous-v2':
     tau = 0.001
     gamma = 0.99
-    actor_lr = 0.0001
-    critic_lr = 0.001
-    buffer_size = 10000
-    batch_size = 40
+    actor_lr = 0.00005
+    critic_lr = 0.0005
+    buffer_size = 1000000
+    batch_size = 64
     noise_stddev = 0.2
     target_noise_stddev = 0.1
-    hidden_layers_shape = (400,300)
+    hidden_layers_shape = (400,200)
     epsilon_decay = 0.99
     min_epsilon = 0.01
 else:
@@ -109,7 +111,7 @@ class Buffer:
     ):
         # Training and updating Actor & Critic networks.
         # See Pseudo Code.
-        with tf.GradientTape(persistent=True) as tape:
+        with tf.GradientTape() as tape1, tf.GradientTape() as tape2:
             target_actions = target_actor(next_state_batch, training=True)
 
             #adds noise to targets if target_policy_smoothing is enabled
@@ -139,33 +141,30 @@ class Buffer:
                     [state_batch, action_batch], training=True)
                 critic_loss_2 = tf.math.reduce_mean(tf.math.square(y - critic_value_2))
 
-        critic_grad = tape.gradient(
+        critic_grad = tape1.gradient(
             critic_loss, critic_model.trainable_variables)
         critic_optimizer.apply_gradients(
             zip(critic_grad, critic_model.trainable_variables)
         )
 
         if clipped_double_q_learning:
-            critic_grad_2 = tape.gradient(
+            critic_grad_2 = tape2.gradient(
                 critic_loss_2, critic_model_2.trainable_variables)
             critic_optimizer.apply_gradients(
                 zip(critic_grad_2, critic_model_2.trainable_variables)
             )
 
-        del tape
-
-
         #if delayed_policy_updates is True, only updates with certain interval
         if (not delayed_policy_updates) or (delayed_policy_updates and (episode_step_counter % td3_update_interval == 0)):
             #print("training actor network")
-            with tf.GradientTape() as tape:
+            with tf.GradientTape() as tape3:
                 actions = actor_model(state_batch, training=True)
                 critic_value = critic_model([state_batch, actions], training=True)
                 # Used `-value` as we want to maximize the value given
                 # by the critic for our actions
                 actor_loss = -tf.math.reduce_mean(critic_value)
 
-            actor_grad = tape.gradient(actor_loss, actor_model.trainable_variables)
+            actor_grad = tape3.gradient(actor_loss, actor_model.trainable_variables)
             actor_optimizer.apply_gradients(
                 zip(actor_grad, actor_model.trainable_variables)
             )
@@ -268,7 +267,7 @@ def policy(state, use_param_noise):
     legal_action = np.clip(action.numpy(), lower_bound, upper_bound)
 
     #neccesary for lunar lander
-    if problem == 'LunarLanderContinuous-v0': return np.squeeze(legal_action)
+    if problem == 'LunarLanderContinuous-v2': return np.squeeze(legal_action)
     return [np.squeeze(legal_action)]
 
 def ddpg_distance_metric(actions1, actions2):
@@ -358,8 +357,11 @@ for ep in range(episodes):
 
     if use_param_noise: perturb_actor_parameters()
 
-    if epsilon_decay:
-        epsilon *= epsilon_decay
+    if linear_epsilon_decay or exponential_epsilon_decay:
+        if linear_epsilon_decay:
+            epsilon -= epsilon_decay
+        else:
+            epsilon *= epsilon_decay
         epsilon = np.maximum(min_epsilon,epsilon)
         if use_param_noise:
             param_noise.set_desired_action_stddev(noise_stddev*epsilon)
