@@ -134,6 +134,6 @@ Final score in this experiment is irrevant as the algorithm was unstable. Hyperp
 ![Alt text](/images/ddpg_car_best_so_far.png?raw=true "DDPG MountainCarContinuous")
 
 ## TASK 4: Lunar Lander Continuous
-DDPG can be used to solve this enviroment as well, but I have not tested it yet.
+Currently working on this, stay tuned.
 
 

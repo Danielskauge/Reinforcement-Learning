@@ -14,7 +14,7 @@ batch_norm = True
 gradient_clipping = False
 use_action_noise = True
 use_param_noise = not use_action_noise
-use_linear_epsilon_decay = True
+use_linear_epsilon_decay = False
 use_exponential_epsilon_decay = not use_linear_epsilon_decay
 #to use hyperparameters from automated tuning
 
@@ -67,7 +67,7 @@ elif problem == 'LunarLanderContinuous-v2':
     noise_stddev = 0.2
     target_noise_stddev = 0.1
     hidden_layers_shape = (400,300)
-    linear_epsilon_decay = 0.003
+    linear_epsilon_decay = 0.004
     exponential_epsilon_decay = 0.99
     min_epsilon = 0.01
 else:
