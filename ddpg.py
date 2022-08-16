@@ -14,8 +14,8 @@ batch_norm = True
 gradient_clipping = False
 use_action_noise = True
 use_param_noise = not use_action_noise
-linear_epsilon_decay = True
-exponential_epsilon_decay = not linear_epsilon_decay
+use_linear_epsilon_decay = True
+use_exponential_epsilon_decay = not use_linear_epsilon_decay
 #to use hyperparameters from automated tuning
 
 #TD3 features
@@ -40,7 +40,8 @@ if problem == 'Pendulum-v1':
     noise_stddev = 0.2
     target_noise_stddev = 0.1
     hidden_layers_shape = (400,300)
-    epsilon_decay = 0.95
+    linaear_epsilon_decay = 0.004
+    exponential_epsilon_decay = 0.95
     min_epsilon = 0.01 
 elif problem == 'MountainCarContinuous-v0':
     tau = 0.001
@@ -53,19 +54,21 @@ elif problem == 'MountainCarContinuous-v0':
     target_noise_stddev = 0.1
     hidden_layers_shape = (400,300)
     epsilon_decay = 0.98
-    linear_epsilon_decay = 0.03
+    linear_epsilon_decay = 0.003
+    exponential_epsilon_decay = 0.99
     min_epsilon = 0.01
 elif problem == 'LunarLanderContinuous-v2':
     tau = 0.001
     gamma = 0.99
-    actor_lr = 0.00005
-    critic_lr = 0.0005
-    buffer_size = 1000000
-    batch_size = 64
+    actor_lr = 0.0001
+    critic_lr = 0.001
+    buffer_size = 10000
+    batch_size = 40
     noise_stddev = 0.2
     target_noise_stddev = 0.1
-    hidden_layers_shape = (400,200)
-    epsilon_decay = 0.99
+    hidden_layers_shape = (400,300)
+    linear_epsilon_decay = 0.003
+    exponential_epsilon_decay = 0.99
     min_epsilon = 0.01
 else:
     print('Error choosing hyperparams')
@@ -257,7 +260,7 @@ def policy(state, use_param_noise):
     #gets action from actor network, and applies either param or action noise 
     if use_param_noise:
         action = tf.squeeze(perturbed_actor(state))
-    elif use_action_noise and epsilon_decay:
+    elif use_action_noise and (use_exponential_epsilon_decay or use_linear_epsilon_decay):
         action = tf.squeeze(actor_model(state)) + epsilon * action_noise()
     else:
         action = tf.squeeze(actor_model(state)) + action_noise()
@@ -357,11 +360,11 @@ for ep in range(episodes):
 
     if use_param_noise: perturb_actor_parameters()
 
-    if linear_epsilon_decay or exponential_epsilon_decay:
-        if linear_epsilon_decay:
-            epsilon -= epsilon_decay
+    if use_linear_epsilon_decay or use_exponential_epsilon_decay:
+        if use_linear_epsilon_decay:
+            epsilon -= linear_epsilon_decay
         else:
-            epsilon *= epsilon_decay
+            epsilon *= exponential_epsilon_decay
         epsilon = np.maximum(min_epsilon,epsilon)
         if use_param_noise:
             param_noise.set_desired_action_stddev(noise_stddev*epsilon)
