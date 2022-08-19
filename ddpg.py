@@ -26,10 +26,10 @@ clipped_double_q_learning = False
 
 #interval for policy updates if delayed_policy_updates is enabled
 td3_update_interval = 2
-
-episodes = 500
 epsilon = 1
 gradient_clip_value = 1
+
+episodes = 500
 
 if problem == 'Pendulum-v1':
     tau = 0.005
@@ -41,7 +41,7 @@ if problem == 'Pendulum-v1':
     noise_stddev = 0.2
     target_noise_stddev = 0.1
     hidden_layers_shape = (400,300)
-    linaear_epsilon_decay = 0.004
+    linear_epsilon_decay = 0.004
     exponential_epsilon_decay = 0.95
     min_epsilon = 0.01 
 elif problem == 'MountainCarContinuous-v0':
@@ -136,41 +136,41 @@ class Buffer:
                 y = reward_batch + gamma * target_critic(
                         [next_state_batch, target_actions], training=True)
             
-            critic_value = critic_model(
+            critic_value = critic(
                 [state_batch, action_batch], training=True)
             critic_loss = tf.math.reduce_mean(tf.math.square(y - critic_value))
 
             if clipped_double_q_learning:
-                critic_value_2 = critic_model_2(
+                critic_value_2 = critic_2(
                     [state_batch, action_batch], training=True)
                 critic_loss_2 = tf.math.reduce_mean(tf.math.square(y - critic_value_2))
 
         critic_grad = tape1.gradient(
-            critic_loss, critic_model.trainable_variables)
+            critic_loss, critic.trainable_variables)
         critic_optimizer.apply_gradients(
-            zip(critic_grad, critic_model.trainable_variables)
+            zip(critic_grad, critic.trainable_variables)
         )
 
         if clipped_double_q_learning:
             critic_grad_2 = tape2.gradient(
-                critic_loss_2, critic_model_2.trainable_variables)
+                critic_loss_2, critic_2.trainable_variables)
             critic_optimizer.apply_gradients(
-                zip(critic_grad_2, critic_model_2.trainable_variables)
+                zip(critic_grad_2, critic_2.trainable_variables)
             )
 
         #if delayed_policy_updates is True, only updates with certain interval
         if (not delayed_policy_updates) or (delayed_policy_updates and (episode_step_counter % td3_update_interval == 0)):
             #print("training actor network")
             with tf.GradientTape() as tape3:
-                actions = actor_model(state_batch, training=True)
-                critic_value = critic_model([state_batch, actions], training=True)
+                actions = actor(state_batch, training=True)
+                critic_value = critic([state_batch, actions], training=True)
                 # Used `-value` as we want to maximize the value given
                 # by the critic for our actions
                 actor_loss = -tf.math.reduce_mean(critic_value)
 
-            actor_grad = tape3.gradient(actor_loss, actor_model.trainable_variables)
+            actor_grad = tape3.gradient(actor_loss, actor.trainable_variables)
             actor_optimizer.apply_gradients(
-                zip(actor_grad, actor_model.trainable_variables)
+                zip(actor_grad, actor.trainable_variables)
             )
 
 
@@ -214,18 +214,18 @@ def get_actor(hidden_layers_shape):
     net = layers.Activation('relu')(out)
 
     net = layers.Dense(num_actions, kernel_initializer=uniform_init)(net)
-    if batch_norm: outputs = layers.BatchNormalization()(outputs)
-    action_output = layers.Activation('tanh')(outputs)
+    if batch_norm: net = layers.BatchNormalization()(net)
+    action_output = layers.Activation('tanh')(net)
 
     action_output = action_output * upper_bound
-    model = tf.keras.Model(state_input action_output)
+    model = tf.keras.Model(state_input, action_output)
     return model
 
 def get_critic(hidden_layers_shape):
     # State as input
     state_input = layers.Input(shape=(num_states))
 
-    state_net = layers.Dense(16)(state_net)
+    state_net = layers.Dense(16)(state_input)
     if batch_norm: state_net = layers.BatchNormalization()(state_net)
     state_net = layers.Activation('relu')(state_net)
 
@@ -263,9 +263,9 @@ def policy(state):
     if use_param_noise:
         action = tf.squeeze(perturbed_actor(state))
     elif use_action_noise and (use_exponential_epsilon_decay or use_linear_epsilon_decay):
-        action = tf.squeeze(actor_model(state)) + epsilon * action_noise()
+        action = tf.squeeze(actor(state)) + epsilon * action_noise()
     else:
-        action = tf.squeeze(actor_model(state)) + action_noise()
+        action = tf.squeeze(actor(state)) + action_noise()
 
 
     # We make sure action is within bounds
@@ -285,7 +285,7 @@ def ddpg_distance_metric(actions1, actions2):
 def perturb_actor_parameters():
     #Apply parameter noise to actor model, for exploration
     global perturbed_actor
-    perturbed_actor.set_weights(actor_model.get_weights())
+    perturbed_actor.set_weights(actor.get_weights())
 
     layers_params_array = perturbed_actor.trainable_variables
 
@@ -309,24 +309,23 @@ else:
    critic_optimizer = tf.keras.optimizers.Adam(learning_rate=critic_lr)
    actor_optimizer = tf.keras.optimizers.Adam(learning_rate=actor_lr)
  
-
 buffer = Buffer(buffer_size, batch_size)
 
-actor_model = get_actor(hidden_layers_shape)
-critic_model = get_critic(hidden_layers_shape)
+actor = get_actor(hidden_layers_shape)
+critic = get_critic(hidden_layers_shape)
 
 target_actor = get_actor(hidden_layers_shape)
 target_critic = get_critic(hidden_layers_shape)
 
 # Making the weights equal initially
-target_actor.set_weights(actor_model.get_weights())
-target_critic.set_weights(critic_model.get_weights())
+target_actor.set_weights(actor.get_weights())
+target_critic.set_weights(critic.get_weights())
 
 
 #actor to be perturbed with parameter noise
 if use_param_noise:
     perturbed_actor = get_actor(hidden_layers_shape)
-    perturbed_actor.set_weights(actor_model.get_weights())
+    perturbed_actor.set_weights(actor.get_weights())
 
     #parameter noise object
     param_noise = AdaptiveParamNoiseSpec(
@@ -341,10 +340,10 @@ if target_policy_smoothing:
         1), std_deviation=float(target_noise_stddev) * np.ones(1))
 
 if clipped_double_q_learning:
-    critic_model_2 = get_critic(hidden_layers_shape)
+    critic_2 = get_critic(hidden_layers_shape)
     target_critic_2 = get_critic(hidden_layers_shape)
-    critic_model_2.set_weights(critic_model.get_weights())
-    target_critic_2.set_weights(critic_model.get_weights())
+    critic_2.set_weights(critic.get_weights())
+    target_critic_2.set_weights(critic.get_weights())
 
 episode_step_counter = 0
 
@@ -388,8 +387,8 @@ for ep in range(episodes):
 
         if (not delayed_policy_updates) or (delayed_policy_updates and (episode_step_counter % td3_update_interval == 0)):
             #print("updating target networks")
-            update_target(target_actor.variables, actor_model.variables, tau)
-            update_target(target_critic.variables, critic_model.variables, tau)
+            update_target(target_actor.variables, actor.variables, tau)
+            update_target(target_critic.variables, critic.variables, tau)
 
         if done:
             break

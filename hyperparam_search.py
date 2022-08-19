@@ -138,31 +138,31 @@ class Buffer:
             y = reward_batch + gamma * target_critic(
                 [next_state_batch, target_actions], training=True
             )
-            critic_value = critic_model(
+            critic_value = critic(
                 [state_batch, action_batch], training=True)
             critic_loss = tf.math.reduce_mean(tf.math.square(y - critic_value))
 
         critic_grad = tape.gradient(
-            critic_loss, critic_model.trainable_variables)
+            critic_loss, critic.trainable_variables)
         critic_optimizer.apply_gradients(
-            zip(critic_grad, critic_model.trainable_variables)
+            zip(critic_grad, critic.trainable_variables)
         )
 
         #if clipped_double_q_learning enabled, only
         if (not delayed_policy_updates) or (delayed_policy_updates and (episode_step_counter % td3_update_interval == 0)):
             #print("training actor network")
             with tf.GradientTape() as tape:
-                actions = actor_model(state_batch, training=True)
-                critic_value = critic_model(
+                actions = actor(state_batch, training=True)
+                critic_value = critic(
                     [state_batch, actions], training=True)
                 # Used `-value` as we want to maximize the value given
                 # by the critic for our actions
                 actor_loss = -tf.math.reduce_mean(critic_value)
 
             actor_grad = tape.gradient(
-                actor_loss, actor_model.trainable_variables)
+                actor_loss, actor.trainable_variables)
             actor_optimizer.apply_gradients(
-                zip(actor_grad, actor_model.trainable_variables)
+                zip(actor_grad, actor.trainable_variables)
             )
 
     # We compute the loss and update parameters
@@ -261,7 +261,7 @@ def policy(state, use_param_noise):
     if use_param_noise:
         action = tf.squeeze(perturbed_actor(state))
     else:
-        action = tf.squeeze(actor_model(state)) + action_noise()
+        action = tf.squeeze(actor(state)) + action_noise()
 
     # We make sure action is within bounds
     legal_action = np.clip(action.numpy(), lower_bound, upper_bound)
@@ -281,7 +281,7 @@ def ddpg_distance_metric(actions1, actions2):
 def perturb_actor_parameters():
     #Apply parameter noise to actor model, for exploration
     global perturbed_actor
-    perturbed_actor.set_weights(actor_model.get_weights())
+    perturbed_actor.set_weights(actor.get_weights())
 
     layers_params_array = perturbed_actor.trainable_variables
 
@@ -298,8 +298,8 @@ num_actions = env.action_space.shape[0]
 upper_bound = env.action_space.high[0]
 lower_bound = env.action_space.low[0]
 
-actor_model = get_actor(hidden_layers_shape)
-critic_model = get_critic(hidden_layers_shape)
+actor = get_actor(hidden_layers_shape)
+critic = get_critic(hidden_layers_shape)
 
 target_actor = get_actor(hidden_layers_shape)
 target_critic = get_critic(hidden_layers_shape)
@@ -311,8 +311,8 @@ def train(params):
     global gamma
     global noise_stddev
     global epsilon
-    global actor_model
-    global critic_model
+    global actor
+    global critic
     global target_actor
     global target_critic
 
@@ -325,20 +325,20 @@ def train(params):
 
     buffer = Buffer(buffer_size, batch_size)
 
-    actor_model = get_actor(hidden_layers_shape)
-    critic_model = get_critic(hidden_layers_shape)
+    actor = get_actor(hidden_layers_shape)
+    critic = get_critic(hidden_layers_shape)
 
     target_actor = get_actor(hidden_layers_shape)
     target_critic = get_critic(hidden_layers_shape)
 
     # Making the weights equal initially
-    target_actor.set_weights(actor_model.get_weights())
-    target_critic.set_weights(critic_model.get_weights())
+    target_actor.set_weights(actor.get_weights())
+    target_critic.set_weights(critic.get_weights())
 
     #actor to be perturbed with parameter noise
     if use_param_noise:
         perturbed_actor = get_actor(hidden_layers_shape)
-        perturbed_actor.set_weights(actor_model.get_weights())
+        perturbed_actor.set_weights(actor.get_weights())
 
         #parameter noise object
         param_noise = AdaptiveParamNoiseSpec(
@@ -400,8 +400,8 @@ def train(params):
 
             if (not delayed_policy_updates) or (delayed_policy_updates and (episode_step_counter % td3_update_interval == 0)):
                 #print("updating target networks")
-                update_target(target_actor.variables, actor_model.variables, tau)
-                update_target(target_critic.variables, critic_model.variables, tau)
+                update_target(target_actor.variables, actor.variables, tau)
+                update_target(target_critic.variables, critic.variables, tau)
 
             if done:
                 break
