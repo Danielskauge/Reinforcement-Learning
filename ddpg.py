@@ -46,14 +46,14 @@ if problem == 'Pendulum-v1':
 elif problem == 'MountainCarContinuous-v0':
     tau = 0.001
     gamma = 0.99
-    actor_lr = 0.0001
-    critic_lr = 0.001
+    actor_lr = 0.00005
+    critic_lr = 0.0005
     buffer_size = 10000
-    batch_size = 40
+    batch_size = 128
     noise_stddev = 0.2
     target_noise_stddev = 0.1
     hidden_layers_shape = (400,300)
-    epsilon_decay = 0.98
+    epsilon_decay = 0.99
     linear_epsilon_decay = 0.003
     exponential_epsilon_decay = 0.99
     min_epsilon = 0.01
@@ -64,7 +64,7 @@ elif problem == 'LunarLanderContinuous-v2':
     critic_lr = 0.001
     buffer_size = 10000
     batch_size = 40
-    noise_stddev = 0.4
+    noise_stddev = 0.2
     target_noise_stddev = 0.1
     hidden_layers_shape = (400,300)
     linear_epsilon_decay = 0.004
@@ -250,6 +250,7 @@ def get_critic(hidden_layers_shape):
     if batch_norm: net = layers.BatchNormalization()(net)
     out = layers.Activation('relu')(net)
 
+    if batch_norm: net = layers.BatchNormalization()(net)
     Q_value = layers.Dense(1)(out)
 
     # Outputs single value for give state-action
