@@ -136,5 +136,5 @@ Final score in this experiment is irrevant as the algorithm was unstable. Hyperp
 ## TASK 4: Lunar Lander Continuous
 Currently working on this, stay tuned.
 
-Best results so far. Uses TD3 features, parameter noise and batch normalization.
+Best results so far. Uses TD3 features, parameter noise and batch normalization. Reward exceeded +200 several times, indicating that the lander came to rest on the landing pad.
 ![Alt text](/images/lunar_best_so_far.png?raw=true "Lunar Lander Continuous v2")
