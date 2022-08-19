@@ -11,6 +11,7 @@ from math import sqrt
 #Pendulum-v1, MountainCarContinuous-v0, LunarLanderContinuous-v2
 problem = "LunarLanderContinuous-v2"
 batch_norm = True
+kernel_init_all_layers = False
 gradient_clipping = False
 use_action_noise = True
 use_param_noise = not use_action_noise
@@ -60,10 +61,10 @@ elif problem == 'MountainCarContinuous-v0':
 elif problem == 'LunarLanderContinuous-v2':
     tau = 0.001
     gamma = 0.99
-    actor_lr = 0.0001
-    critic_lr = 0.001
-    buffer_size = 10000
-    batch_size = 40
+    actor_lr = 0.00005
+    critic_lr = 0.0005
+    buffer_size = 1000000
+    batch_size = 64
     noise_stddev = 0.2
     target_noise_stddev = 0.1
     hidden_layers_shape = (400,300)
@@ -200,62 +201,63 @@ def update_target(target_weights, weights, tau):
         a.assign(b * tau + a * (1 - tau))
 
 def get_actor(hidden_layers_shape):
-    last_init = tf.random_uniform_initializer(minval=-0.003, maxval=0.003)
+    uniform_init = tf.random_uniform_initializer(minval=-0.003, maxval=0.003)
 
-    inputs = layers.Input(shape=(num_states,))
+    state_input = layers.Input(shape=(num_states,))
 
-    out = layers.Dense(hidden_layers_shape[0])(inputs)
-    if batch_norm: out = layers.BatchNormalization()(out)
-    out = layers.Activation('relu')(out)
+    net = layers.Dense(hidden_layers_shape[0])(state_input)
+    if batch_norm: out = layers.BatchNormalization()(net)
+    net = layers.Activation('relu')(out)
 
-    out = layers.Dense(hidden_layers_shape[1])(out)
-    if batch_norm: out = layers.BatchNormalization()(out)
-    out = layers.Activation('relu')(out)
+    net = layers.Dense(hidden_layers_shape[1])(net)
+    if batch_norm: out = layers.BatchNormalization()(net)
+    net = layers.Activation('relu')(out)
 
-    outputs = layers.Dense(num_actions, kernel_initializer=last_init)(out)
+    net = layers.Dense(num_actions, kernel_initializer=uniform_init)(net)
     if batch_norm: outputs = layers.BatchNormalization()(outputs)
-    outputs = layers.Activation('tanh')(outputs)
+    action_output = layers.Activation('tanh')(outputs)
 
-    # Our upper bound is 2.0 for Pendulum.
-    outputs = outputs * upper_bound
-    model = tf.keras.Model(inputs, outputs)
+    action_output = action_output * upper_bound
+    model = tf.keras.Model(state_input action_output)
     return model
 
 def get_critic(hidden_layers_shape):
     # State as input
     state_input = layers.Input(shape=(num_states))
-    state_out = layers.Dense(16)(state_input)
-    if batch_norm: state_out = layers.BatchNormalization()(state_out)
-    state_out = layers.Activation('relu')(state_out)
-    state_out = layers.Dense(32)(state_out)
-    if batch_norm: state_out = layers.BatchNormalization()(state_out)
-    state_out = layers.Activation('relu')(state_out)
+
+    state_net = layers.Dense(16)(state_net)
+    if batch_norm: state_net = layers.BatchNormalization()(state_net)
+    state_net = layers.Activation('relu')(state_net)
+
+    state_net = layers.Dense(32)(state_net)
+    if batch_norm: state_out = layers.BatchNormalization()(state_net)
+    state_out = layers.Activation('relu')(state_net)
 
     # Action as input
     action_input = layers.Input(shape=(num_actions))
-    action_out = layers.Dense(32)(action_input)
-    if batch_norm: action_out = layers.BatchNormalization()(action_out)
-    action_out = layers.Activation('relu')(action_out)
+
+    action_net = layers.Dense(32)(action_input)
+    if batch_norm: action_net = layers.BatchNormalization()(action_net)
+    action_out = layers.Activation('relu')(action_net)
 
     # Both are passed through seperate layer before concatenating
     concat = layers.Concatenate()([state_out, action_out])
 
-    out = layers.Dense(hidden_layers_shape[0])(concat)
-    if batch_norm: out = layers.BatchNormalization()(out)
-    out = layers.Activation('relu')(out)
+    net = layers.Dense(hidden_layers_shape[0])(concat)
+    if batch_norm: net = layers.BatchNormalization()(net)
+    net = layers.Activation('relu')(net)
 
-    out = layers.Dense(hidden_layers_shape[1])(out)
-    if batch_norm: out = layers.BatchNormalization()(out)
-    out = layers.Activation('relu')(out)
+    net = layers.Dense(hidden_layers_shape[1])(net)
+    if batch_norm: net = layers.BatchNormalization()(net)
+    out = layers.Activation('relu')(net)
 
-    outputs = layers.Dense(1)(out)
+    Q_value = layers.Dense(1)(out)
 
     # Outputs single value for give state-action
-    model = tf.keras.Model([state_input, action_input], outputs)
-
+    model = tf.keras.Model([state_input, action_input], Q_value)
     return model
     
-def policy(state, use_param_noise):
+def policy(state):
 
     #gets action from actor network, and applies either param or action noise 
     if use_param_noise:
@@ -372,7 +374,7 @@ for ep in range(episodes):
     while True:
         tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
 
-        action = policy(tf_prev_state, use_param_noise)
+        action = policy(tf_prev_state)
 
         # Recieve state and reward from environment.
         state, reward, done, info = env.step(action)
@@ -395,17 +397,17 @@ for ep in range(episodes):
         prev_state = state
         # End this episode when `done` is True
 
-    if buffer.index - episode_step_counter > 0:
-        episode_perturbed_actions = buffer.action_buffer[buffer.index-episode_step_counter:buffer.index]
-        episode_states = buffer.state_buffer[buffer.index - episode_step_counter:buffer.index]
-    else:
-        episode_perturbed_actions = buffer.action_buffer[buffer.index-episode_step_counter + buffer.buffer_capacity : buffer.buffer_capacity] 
-        + buffer.action_buffer[0:buffer.index]
-        episode_states = buffer.state_buffer[buffer.index-episode_step_counter + buffer.buffer_capacity : buffer.buffer_capacity] 
-        + buffer.state_buffer[0:buffer.index]
-
     if use_param_noise:
-        episode_unperturbed_actions = policy(episode_states, use_param_noise)
+        if buffer.index - episode_step_counter > 0:
+            episode_perturbed_actions = buffer.action_buffer[buffer.index-episode_step_counter:buffer.index]
+            episode_states = buffer.state_buffer[buffer.index - episode_step_counter:buffer.index]
+        else:
+            episode_perturbed_actions = buffer.action_buffer[buffer.index-episode_step_counter + buffer.buffer_capacity : buffer.buffer_capacity] 
+            + buffer.action_buffer[0:buffer.index]
+            episode_states = buffer.state_buffer[buffer.index-episode_step_counter + buffer.buffer_capacity : buffer.buffer_capacity] 
+            + buffer.state_buffer[0:buffer.index]
+
+        episode_unperturbed_actions = policy(episode_states)
 
         #find distance between perturbed and unperturbed actions
         distance = ddpg_distance_metric(episode_perturbed_actions, episode_unperturbed_actions)
