@@ -11,23 +11,22 @@ from math import sqrt
 #Pendulum-v1, MountainCarContinuous-v0, LunarLanderContinuous-v2
 problem = "LunarLanderContinuous-v2"
 batch_norm = True
-kernel_init_all_layers = False
 gradient_clipping = False
-use_action_noise = True
+use_action_noise = False
 use_param_noise = not use_action_noise
 use_linear_epsilon_decay = False
 use_exponential_epsilon_decay = not use_linear_epsilon_decay
 #to use hyperparameters from automated tuning
 
 #TD3 features
-target_policy_smoothing = False
-delayed_policy_updates = False
-clipped_double_q_learning = False
+target_policy_smoothing = True
+delayed_policy_updates = True
+clipped_double_q_learning = True
 
 #interval for policy updates if delayed_policy_updates is enabled
 td3_update_interval = 2
-epsilon = 1
 gradient_clip_value = 1
+epsilon = 1
 
 episodes = 500
 
@@ -61,18 +60,18 @@ elif problem == 'MountainCarContinuous-v0':
 elif problem == 'LunarLanderContinuous-v2':
     tau = 0.001
     gamma = 0.99
-    actor_lr = 0.00005
-    critic_lr = 0.0005
-    buffer_size = 1000000
-    batch_size = 64
-    noise_stddev = 0.2
+    actor_lr = 0.0001
+    critic_lr = 0.001
+    buffer_size = 10000
+    batch_size = 40
+    noise_stddev = 0.4
     target_noise_stddev = 0.1
     hidden_layers_shape = (400,300)
     linear_epsilon_decay = 0.004
     exponential_epsilon_decay = 0.99
     min_epsilon = 0.01
 else:
-    print('Error choosing hyperparams')
+    print('Not accepted enviroment')
 
 class Buffer:
     def __init__(self, buffer_capacity=100000, batch_size=64):
@@ -206,12 +205,12 @@ def get_actor(hidden_layers_shape):
     state_input = layers.Input(shape=(num_states,))
 
     net = layers.Dense(hidden_layers_shape[0])(state_input)
-    if batch_norm: out = layers.BatchNormalization()(net)
-    net = layers.Activation('relu')(out)
+    if batch_norm: net = layers.BatchNormalization()(net)
+    net = layers.Activation('relu')(net)
 
     net = layers.Dense(hidden_layers_shape[1])(net)
-    if batch_norm: out = layers.BatchNormalization()(net)
-    net = layers.Activation('relu')(out)
+    if batch_norm: net = layers.BatchNormalization()(net)
+    net = layers.Activation('relu')(net)
 
     net = layers.Dense(num_actions, kernel_initializer=uniform_init)(net)
     if batch_norm: net = layers.BatchNormalization()(net)
@@ -416,7 +415,7 @@ for ep in range(episodes):
     
     ep_reward_list.append(episodic_reward)
 
-    # Mean of last 40 episodes
+    # Mean of last 10 episodes
     avg_reward = np.mean(ep_reward_list[-10:])
     print("Episode * {} * Episodic Reward is ==> {}".format(ep, episodic_reward))
     avg_reward_list.append(avg_reward)
