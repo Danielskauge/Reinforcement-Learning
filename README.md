@@ -27,7 +27,7 @@ These can be toggled in the ddpg.py file to easily experiment with different com
 - keras
 - matplotlib
 
-Code has only been tested on Windows.
+Only tested with Python 3.8.12 on Windows.
 
 If running on a Colab Notebook, add the following at the start of the code to be able to run LunarLanderContinuous-v2:
 !pip3 install box2d-py
